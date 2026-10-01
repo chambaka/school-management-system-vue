@@ -19,17 +19,26 @@ function applyDefaults() {
   document.title = "ShuleHub · School Management System";
 }
 
-export function isLoopbackHost(host) {
+const PLATFORM_HOSTS = new Set(["shulehub.apexglobe.co.tz"]);
+
+export function hostName(host) {
   const value = (host || "").trim().toLowerCase();
-  let name = value;
   if (value.startsWith("[")) {
     const end = value.indexOf("]");
-    name = end > 1 ? value.slice(1, end) : value;
-  } else {
-    const first = value.indexOf(":");
-    const last = value.lastIndexOf(":");
-    if (first > 0 && first === last) name = value.slice(0, first);
+    return end > 1 ? value.slice(1, end) : value;
   }
+  const first = value.indexOf(":");
+  const last = value.lastIndexOf(":");
+  if (first > 0 && first === last) return value.slice(0, first);
+  return value;
+}
+
+export function isPlatformHost(host) {
+  return PLATFORM_HOSTS.has(hostName(host));
+}
+
+export function isLoopbackHost(host) {
+  const name = hostName(host);
   return name === "localhost" || name === "127.0.0.1" || name === "0.0.0.0" || name === "::1";
 }
 
@@ -58,7 +67,7 @@ export const useBrandingStore = defineStore("branding", {
       try {
         if (slug) {
           this.current = await brandingApi.bySlug(slug);
-        } else if (!isLoopbackHost(window.location.host)) {
+        } else if (!isLoopbackHost(window.location.host) && !isPlatformHost(window.location.host)) {
           this.current = await brandingApi.byHost(window.location.host);
         } else {
           this.current = null;
