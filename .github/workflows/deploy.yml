@@ -1,230 +1,297 @@
 name: Deploy ShuleHub Vue
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 on:
   push:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: shulehub-vue-production
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
 
     runs-on: ubuntu-latest
-
     timeout-minutes: 45
 
     steps:
 
       # =====================================================
-      # CHECKOUT SOURCE CODE
+      # CHECKOUT
       # =====================================================
       - name: Checkout Code
         uses: actions/checkout@v4
 
       # =====================================================
-      # SETUP NODE
+      # NODE.JS
       # =====================================================
       - name: Setup Node
         uses: actions/setup-node@v4
-
         with:
           node-version: 22
           cache: npm
 
       # =====================================================
-      # INSTALL AND BUILD WITH RETRIES
+      # INSTALL DEPENDENCIES
+      # =====================================================
+      - name: Install Dependencies
+        run: npm ci
+
+      # =====================================================
+      # BUILD
       # =====================================================
       - name: Build Application
-
-        uses: nick-fields/retry@v3
-
-        with:
-          timeout_minutes: 20
-          max_attempts: 3
-          retry_wait_seconds: 15
-
-          command: |
-            npm ci
-            npm run build
+        run: npm run build
 
       # =====================================================
-      # VERIFY DIST EXISTS
+      # VERIFY BUILD
       # =====================================================
       - name: Verify dist
-
         run: |
+          set -e
 
-          echo "Listing dist..."
+          echo "Checking dist directory..."
 
           ls -la dist/
 
-          if [ ! -f dist/index.html ]; then
+          if [ ! -f "dist/index.html" ]; then
             echo "ERROR: dist/index.html was not built."
             exit 1
           fi
 
-      # =====================================================
-      # PREPARE SSH KEY
-      # =====================================================
-      - name: Prepare SSH Key
+          echo "Build verified successfully."
 
+      # =====================================================
+      # PREPARE SSH
+      # =====================================================
+      - name: Prepare SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
+          set -e
 
           mkdir -p ~/.ssh
 
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
-
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+          chmod 644 ~/.ssh/known_hosts
 
       # =====================================================
       # CREATE REMOTE TEMP DIRECTORY
       # =====================================================
-      - name: Prepare VPS Temp Directory
+      - name: Prepare VPS
+        env:
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -e
 
-        uses: nick-fields/retry@v3
-
-        with:
-          timeout_minutes: 5
-          max_attempts: 3
-          retry_wait_seconds: 10
-
-          command: |
-
-            ssh \
-              -o StrictHostKeyChecking=no \
-              -o ServerAliveInterval=60 \
-              -o ServerAliveCountMax=10 \
-              -i ~/.ssh/id_rsa \
-              ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} \
-              "mkdir -p /tmp/school-management-vue"
+          ssh \
+            -i ~/.ssh/id_rsa \
+            -o ServerAliveInterval=60 \
+            -o ServerAliveCountMax=10 \
+            "$VPS_USERNAME@$VPS_HOST" \
+            "mkdir -p /tmp/school-management-vue"
 
       # =====================================================
-      # UPLOAD DIST TO VPS WITH RETRIES
+      # UPLOAD BUILD
       # =====================================================
-      - name: Upload dist to VPS
+      - name: Upload dist
+        env:
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -e
 
-        uses: nick-fields/retry@v3
-
-        with:
-          timeout_minutes: 15
-          max_attempts: 3
-          retry_wait_seconds: 20
-
-          command: |
-
-            scp -r \
-              -o StrictHostKeyChecking=no \
-              -o ServerAliveInterval=60 \
-              -o ServerAliveCountMax=10 \
-              -i ~/.ssh/id_rsa \
-              dist \
-              ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/tmp/school-management-vue/
+          scp -r \
+            -i ~/.ssh/id_rsa \
+            -o ServerAliveInterval=60 \
+            -o ServerAliveCountMax=10 \
+            dist \
+            "$VPS_USERNAME@$VPS_HOST:/tmp/school-management-vue/"
 
       # =====================================================
-      # DEPLOY APPLICATION WITH SSH RETRIES
+      # DEPLOY
       # =====================================================
       - name: Deploy Application
+        env:
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -e
 
-        uses: nick-fields/retry@v3
+          cat > deploy.sh << 'EOF'
+          set -euo pipefail
 
-        with:
-          timeout_minutes: 30
-          max_attempts: 3
-          retry_wait_seconds: 20
+          APP_DIR="/var/www/shulehub.apexglobe.co.tz"
+          BACKUP_DIR="$APP_DIR/backup"
+          TEMP_DIR="/tmp/school-management-vue"
+          RELEASES_DIR="$APP_DIR/releases"
 
-          command: |
+          TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+          RELEASE_DIR="$RELEASES_DIR/$TIMESTAMP"
 
-            cat > deploy.sh << 'EOF'
-            set -e
+          echo "========================================="
+          echo "STARTING SHULEHUB VUE DEPLOYMENT"
+          echo "========================================="
 
-            APP_DIR="/opt/apps/school-management-vue"
-            BACKUP_DIR="/opt/apps/school-management-vue/backup"
-            TEMP_DIR="/tmp/school-management-vue"
+          echo "User: $(id -un)"
+          echo "UID: $(id -u)"
 
-            echo "========================================="
-            echo "STARTING DEPLOYMENT"
-            echo "========================================="
+          # ---------------------------------------------------
+          # VERIFY UPLOAD
+          # ---------------------------------------------------
 
-            echo "Logged in as $(id -un) ($(id -u))"
+          echo "Checking uploaded files..."
 
-            echo "Checking uploaded files..."
+          if [ ! -f "$TEMP_DIR/dist/index.html" ]; then
+            echo "ERROR: dist/index.html was not uploaded."
+            exit 1
+          fi
 
-            ls -la "$TEMP_DIR/dist"
+          echo "Uploaded files verified."
 
-            if [ ! -f "$TEMP_DIR/dist/index.html" ]; then
-              echo "ERROR: dist/index.html was not uploaded."
-              exit 1
-            fi
+          # ---------------------------------------------------
+          # CREATE DIRECTORIES
+          # ---------------------------------------------------
 
-            echo "Creating application directories..."
+          echo "Creating deployment directories..."
 
-            if ! mkdir -p "$APP_DIR" "$BACKUP_DIR"; then
-              echo "ERROR: $(id -un) cannot create $APP_DIR."
-              exit 1
-            fi
+          mkdir -p \
+            "$APP_DIR" \
+            "$BACKUP_DIR" \
+            "$RELEASES_DIR" \
+            "$RELEASE_DIR"
 
-            echo "Backing up the current site if present..."
+          # ---------------------------------------------------
+          # COPY NEW RELEASE
+          # ---------------------------------------------------
 
-            if [ -f "$APP_DIR/index.html" ]; then
+          echo "Copying new release..."
 
-              TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-              ARCHIVE="$BACKUP_DIR/shulehub-vue-$TIMESTAMP"
+          cp -a "$TEMP_DIR/dist/." "$RELEASE_DIR/"
 
-              mkdir -p "$ARCHIVE"
+          if [ ! -f "$RELEASE_DIR/index.html" ]; then
+            echo "ERROR: Release does not contain index.html."
+            rm -rf "$RELEASE_DIR"
+            exit 1
+          fi
 
-              find "$APP_DIR" -mindepth 1 -maxdepth 1 ! -name backup -exec cp -a {} "$ARCHIVE/" \;
+          # ---------------------------------------------------
+          # BACKUP THE LIVE RELEASE, NOT THE SYMLINK
+          # ---------------------------------------------------
 
-              echo "Backup created:"
-              echo "$ARCHIVE"
+          if [ -L "$APP_DIR/current" ] || [ -d "$APP_DIR/current" ]; then
 
+            CURRENT_REAL=$(readlink -f "$APP_DIR/current" || true)
+
+            if [ -n "$CURRENT_REAL" ] && [ -d "$CURRENT_REAL" ]; then
+              echo "Backing up current release..."
+              cp -a "$CURRENT_REAL" "$BACKUP_DIR/$TIMESTAMP"
+              echo "Backup created: $BACKUP_DIR/$TIMESTAMP"
             else
-
-              echo "No existing site found."
-
+              echo "No previous release found."
             fi
 
-            echo "Removing the previous site files..."
+          else
 
-            find "$APP_DIR" -mindepth 1 -maxdepth 1 ! -name backup -exec rm -rf {} +
+            echo "No previous release found."
 
-            echo "Copying the new site..."
+          fi
 
-            cp -a "$TEMP_DIR/dist/." "$APP_DIR/"
+          # ---------------------------------------------------
+          # SWITCH RELEASE ATOMICALLY
+          # ---------------------------------------------------
 
-       
-            echo "Cleaning temporary files..."
+          echo "Activating new release..."
 
-            rm -rf /tmp/school-management-vue
+          ln -sfn "$RELEASE_DIR" "$APP_DIR/.current-next"
+          mv -Tf "$APP_DIR/.current-next" "$APP_DIR/current"
 
-            if [ ! -f "$APP_DIR/index.html" ]; then
-              echo "ERROR: $APP_DIR/index.html is missing after copy."
-              exit 1
-            fi
+          # ---------------------------------------------------
+          # VERIFY ACTIVE RELEASE
+          # ---------------------------------------------------
 
-            echo "========================================="
-            echo "DEPLOYMENT COMPLETED SUCCESSFULLY"
-            echo "========================================="
-            echo "Site files are in $APP_DIR"
-            EOF
+          if [ ! -f "$APP_DIR/current/index.html" ]; then
+            echo "ERROR: Active release is missing index.html."
+            exit 1
+          fi
 
-            chmod +x deploy.sh
+          echo "Active release:"
+          readlink -f "$APP_DIR/current"
 
-            ssh \
-              -o StrictHostKeyChecking=no \
-              -o ServerAliveInterval=60 \
-              -o ServerAliveCountMax=10 \
-              -i ~/.ssh/id_rsa \
-              ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} \
-              'bash -s' < deploy.sh
+          # ---------------------------------------------------
+          # KEEP ONLY LAST 10 RELEASES
+          # ---------------------------------------------------
+
+          echo "Cleaning old releases..."
+
+          mapfile -t old_releases < <(ls -1dt "$RELEASES_DIR"/*/ 2>/dev/null || true)
+          if [ "${#old_releases[@]}" -gt 10 ]; then
+            rm -rf "${old_releases[@]:10}"
+          fi
+
+          # ---------------------------------------------------
+          # KEEP ONLY LAST 10 BACKUPS
+          # ---------------------------------------------------
+
+          echo "Cleaning old backups..."
+
+          mapfile -t old_backups < <(ls -1dt "$BACKUP_DIR"/*/ 2>/dev/null || true)
+          if [ "${#old_backups[@]}" -gt 10 ]; then
+            rm -rf "${old_backups[@]:10}"
+          fi
+
+          # ---------------------------------------------------
+          # CLEAN TEMP FILES
+          # ---------------------------------------------------
+
+          echo "Cleaning temporary files..."
+
+          rm -rf "$TEMP_DIR"
+
+          echo "========================================="
+          echo "DEPLOYMENT COMPLETED SUCCESSFULLY"
+          echo "========================================="
+
+          echo "Application:"
+          echo "$APP_DIR/current"
+
+          echo "Release:"
+          echo "$RELEASE_DIR"
+
+          EOF
+
+          chmod +x deploy.sh
+
+          ssh \
+            -i ~/.ssh/id_rsa \
+            -o ServerAliveInterval=60 \
+            -o ServerAliveCountMax=10 \
+            "$VPS_USERNAME@$VPS_HOST" \
+            'bash -s' < deploy.sh
 
       # =====================================================
-      # SUCCESS MESSAGE
+      # CLEAN SSH KEY
+      # =====================================================
+      - name: Cleanup SSH Key
+        if: always()
+        run: |
+          rm -f ~/.ssh/id_rsa
+
+      # =====================================================
+      # SUCCESS
       # =====================================================
       - name: Deployment Success
-
         run: |
-          echo "Deployment completed successfully."
+          echo "========================================="
+          echo "SHULEHUB VUE DEPLOYMENT SUCCESSFUL"
+          echo "========================================="
