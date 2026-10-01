@@ -1,22 +1,28 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { messageApi, peopleApi } from "../api/endpoints";
 import { useAuthStore } from "../stores/auth";
+import { useConfirmStore } from "../stores/confirm";
+import { useFeedback } from "../composables/useFeedback";
+
 
 const auth = useAuthStore();
+const confirm = useConfirmStore();
 const route = useRoute();
 const router = useRouter();
 
-const error = ref("");
+const { error } = useFeedback();
 const students = ref([]);
 const children = ref([]);
 const thread = ref([]);
 const studentId = ref(route.query.studentId ? String(route.query.studentId) : "");
 const form = reactive({ body: "", notifyParentsSms: false });
+const composerOpen = ref(false);
+const formEl = ref(null);
 
 const isParent = computed(() => auth.role === "PARENT");
-const canSms = computed(() => ["HEADMASTER", "ACADEMIC_MASTER"].includes(auth.role));
+const canSms = computed(() => ["HEADMASTER", "SCHOOL_ADMIN", "ACADEMIC_MASTER"].includes(auth.role));
 const selectedName = computed(() => {
   const fromStudents = students.value.find((s) => String(s.id) === studentId.value);
   if (fromStudents) return fromStudents.name;
@@ -60,18 +66,65 @@ async function loadThread() {
 
 async function send() {
   error.value = "";
+  const ok = await confirm.ask({
+    message: isParent.value ? "Send this reply?" : "Post this comment?",
+    confirmLabel: isParent.value ? "Send reply" : "Post comment",
+  });
+  if (!ok) {
+    closeComposer();
+    return;
+  }
   try {
     await messageApi.post(studentId.value, {
       body: form.body,
       notifyParentsSms: canSms.value && form.notifyParentsSms,
     });
-    form.body = "";
-    form.notifyParentsSms = false;
+    closeComposer();
     await loadThread();
   } catch (e) {
     error.value = e.message;
   }
 }
+
+function clearComposer() {
+  form.body = "";
+  form.notifyParentsSms = false;
+}
+
+function openComposer() {
+  error.value = "";
+  composerOpen.value = true;
+}
+
+function closeComposer() {
+  if (confirm.open) confirm.settle(false);
+  composerOpen.value = false;
+  clearComposer();
+  error.value = "";
+}
+
+function cancelCompose(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
+  closeComposer();
+}
+
+function onComposerKey(event) {
+  if (!composerOpen.value || confirm.open) return;
+  if (event.key === "Escape") closeComposer();
+}
+
+watch(composerOpen, async (isOpen) => {
+  document.body.style.overflow = isOpen ? "hidden" : "";
+  if (!isOpen) return;
+  await nextTick();
+  formEl.value?.querySelector("textarea")?.focus();
+});
+
+onUnmounted(() => {
+  document.body.style.overflow = "";
+  window.removeEventListener("keydown", onComposerKey, true);
+});
 
 function onStudentChange() {
   router.replace({ path: "/messages", query: studentId.value ? { studentId: studentId.value } : {} });
@@ -86,6 +139,7 @@ watch(studentId, async () => {
 });
 
 onMounted(async () => {
+  window.addEventListener("keydown", onComposerKey, true);
   try {
     await loadDirectory();
     await loadThread();
@@ -103,7 +157,6 @@ onMounted(async () => {
         <p class="sub">{{ isParent ? "Notes about your children — reply here" : "Comments to a student. Parents see the thread and can reply." }}</p>
       </div>
     </div>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
     <label class="field">
       <span>{{ isParent ? "Child" : "Student" }}</span>
       <select v-if="isParent" v-model="studentId" @change="onStudentChange">
@@ -129,18 +182,48 @@ onMounted(async () => {
           SMS to parents: {{ m.smsSent }} sent · {{ m.smsFailed }} failed · {{ m.smsSkipped }} skipped
         </p>
       </article>
-      <form class="composer" :data-confirm="isParent ? 'Send this reply?' : 'Post this comment?'" @submit.prevent="send">
-        <label class="field">
-          <span>{{ isParent ? "Reply" : "Comment" }}</span>
-          <textarea v-model="form.body" rows="3" required maxlength="2000" placeholder="Write a note…" />
-        </label>
-        <label v-if="canSms" class="check">
-          <input v-model="form.notifyParentsSms" type="checkbox" />
-          Also SMS linked parents that there is a message to read and reply
-        </label>
-        <button class="btn">{{ isParent ? "Send reply" : "Post comment" }}</button>
-      </form>
+      <button class="btn add-btn" type="button" @click="openComposer">
+        {{ isParent ? "Write reply" : "Write comment" }}
+      </button>
     </div>
+    <Teleport to="body">
+      <div
+        v-if="composerOpen"
+        class="form-scrim"
+        role="presentation"
+        @click.self="closeComposer"
+      >
+        <form
+          ref="formEl"
+          class="glass card form-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="comment-form-title"
+          data-no-confirm
+          @submit.prevent="send"
+        >
+          <div class="form-head">
+            <div>
+              <h3 id="comment-form-title">{{ isParent ? "Write reply" : "Write comment" }}</h3>
+              <p class="sub">{{ selectedName }}</p>
+            </div>
+            <button class="btn btn-ghost" type="button" @click="closeComposer">Close</button>
+          </div>
+          <label class="field">
+            <span>{{ isParent ? "Reply" : "Comment" }}</span>
+            <textarea v-model="form.body" rows="4" required maxlength="2000" placeholder="Write a note…" />
+          </label>
+          <label v-if="canSms" class="check">
+            <input v-model="form.notifyParentsSms" type="checkbox" />
+            Also SMS linked parents that there is a message to read and reply
+          </label>
+          <div class="row-actions form-footer">
+            <button class="btn" type="submit">{{ isParent ? "Send reply" : "Post comment" }}</button>
+            <button class="btn btn-ghost" type="button" @click.prevent.stop="cancelCompose">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -150,6 +233,38 @@ onMounted(async () => {
 .bubble header { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; margin-bottom: 0.35rem; }
 .from-parent { border-left: 3px solid var(--gold, #F5C451); }
 .from-staff { border-left: 3px solid var(--teal, #2aa8a1); }
-.composer { margin-top: 0.5rem; }
+.add-btn { align-self: flex-start; margin-top: 0.35rem; }
 .check { display: flex; gap: 0.5rem; align-items: center; color: var(--muted); margin: 0.5rem 0 1rem; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.form-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: start center;
+  padding: 1.25rem 1.25rem calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  overflow: auto;
+  background: rgba(4, 10, 22, 0.72);
+}
+.form-modal {
+  width: min(40rem, 100%);
+  margin: auto 0;
+}
+.form-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.35rem;
+}
+.form-head .btn {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8rem;
+}
+.form-modal .form-footer .btn {
+  padding: 0.88rem 1.25rem;
+  font-size: inherit;
+}
+h3 { margin: 0 0 0.35rem; }
 </style>

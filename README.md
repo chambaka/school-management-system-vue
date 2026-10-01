@@ -86,7 +86,7 @@ Platform seed (backend first boot):
 
 New school / organization passwords must pass the Nexus policy (10+ chars, upper, lower, digit, special `!@#$%^&*`). Example: `HaloCampus1!`. `ChangeMe123!` is treated as common and cannot be used as a new password.
 
-Forgot password: the API logs a 6-digit code. In the backend `dev` profile the verify response also includes `debugCode`.
+Forgot password: the API texts a 6-digit code to the phone on the account. In the backend `dev` profile the forgot response also includes `debugCode`.
 
 White-label: add `?school=<slug>` or use a mapped custom domain. Branding store calls `GET /api/v1/public/branding/{slug}` or `?host=`.
 

@@ -11,7 +11,7 @@ const contextName = computed(
   () => branding.current?.name || config.organizationName || "",
 );
 const displayPlace = computed(() => {
-  if (branding.current?.country) return `${branding.current.country} · School`;
+  if (branding.current?.country) return `${branding.current.country} - School - Management`;
   if (config.singleTenant) return "Sign in to manage your organization";
   return "Sign in or register your organization";
 });
@@ -37,6 +37,7 @@ const displayPlace = computed(() => {
 <style scoped>
 .guest {
   min-height: 100dvh;
+  min-width: 0;
   display: grid;
   gap: 1.2rem;
   padding:
@@ -100,7 +101,13 @@ const displayPlace = computed(() => {
   font-size: 0.78rem;
   font-weight: 800;
 }
-.panel { align-self: center; padding: 1.6rem 1.45rem 1.5rem; }
+.panel {
+  align-self: center;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  padding: 1.25rem 1.1rem 1.15rem;
+}
 @media (min-width: 920px) {
   .guest {
     grid-template-columns: 1.05fr 0.95fr;

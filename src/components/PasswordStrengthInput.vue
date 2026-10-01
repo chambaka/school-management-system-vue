@@ -2,12 +2,14 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import Icon from "./Icon.vue";
 import { evaluatePassword, generateCompliantPassword } from "../utils/passwordPolicy";
+import { useNoticeStore } from "../stores/notice";
 
 const props = defineProps({
   modelValue: { type: String, default: "" },
   email: { type: String, default: "" },
   name: { type: String, default: "" },
   label: { type: String, default: "Password" },
+  hint: { type: String, default: "" },
   inputId: { type: String, default: "password-input" },
 });
 const emit = defineEmits(["update:modelValue", "valid-change"]);
@@ -15,7 +17,7 @@ const emit = defineEmits(["update:modelValue", "valid-change"]);
 const rootRef = ref(null);
 const rulesOpen = ref(false);
 const revealed = ref(false);
-const generateError = ref("");
+const notice = useNoticeStore();
 
 const evaluation = computed(() =>
   evaluatePassword(props.modelValue, { email: props.email, name: props.name }),
@@ -38,13 +40,12 @@ onMounted(() => document.addEventListener("click", onDocClick));
 onUnmounted(() => document.removeEventListener("click", onDocClick));
 
 function generatePassword() {
-  generateError.value = "";
   try {
     const password = generateCompliantPassword({ email: props.email, name: props.name });
     revealed.value = true;
     emit("update:modelValue", password);
   } catch (e) {
-    generateError.value = e.message;
+    notice.error(e.message);
   }
 }
 </script>
@@ -77,7 +78,7 @@ function generatePassword() {
         <button class="trail" type="button" @click="revealed = !revealed"><Icon name="eye" /></button>
       </div>
     </label>
-    <p v-if="generateError" class="banner banner-error">{{ generateError }}</p>
+    <p v-if="hint && !modelValue" class="sub hint-copy">{{ hint }}</p>
     <div v-if="modelValue" class="strength" :class="strengthClass">
       <div class="strength-head">
         <span>Password strength</span>
@@ -152,6 +153,7 @@ function generatePassword() {
   vertical-align: 0.08rem;
 }
 .control .lead { font-size: 0.95rem; }
+.hint-copy { margin: 0.35rem 0 0.2rem; font-size: 0.78rem; }
 .strength {
   margin: 0.45rem 0 0.85rem;
   padding: 0.8rem 0.85rem;

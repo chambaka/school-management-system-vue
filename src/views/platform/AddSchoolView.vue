@@ -3,10 +3,12 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { tenantApi } from "../../api/endpoints";
 import PhoneInput from "../../components/PhoneInput.vue";
+import { useFeedback } from "../../composables/useFeedback";
+
 
 const route = useRoute();
 const router = useRouter();
-const error = ref("");
+const { error } = useFeedback();
 const saving = ref(false);
 const organization = ref("");
 const tenantStatus = ref("");
@@ -65,7 +67,6 @@ async function addSchool() {
       </div>
       <router-link class="btn btn-ghost" :to="backTo">Back</router-link>
     </div>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
     <form class="glass card form" data-confirm="Add this school?" @submit.prevent="addSchool">
       <label class="field"><span>School name</span><input v-model="form.name" required /></label>
       <label class="field"><span>Email</span><input v-model="form.email" type="email" /></label>

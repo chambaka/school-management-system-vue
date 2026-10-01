@@ -3,9 +3,11 @@ import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { tenantApi } from "../../api/endpoints";
 import PhoneInput from "../../components/PhoneInput.vue";
+import { useFeedback } from "../../composables/useFeedback";
+
 
 const router = useRouter();
-const error = ref("");
+const { error } = useFeedback();
 const saving = ref(false);
 const form = reactive({ name: "", email: "", phone: "", country: "Tanzania" });
 
@@ -32,7 +34,6 @@ async function createTenant() {
       </div>
       <router-link class="btn btn-ghost" to="/platform/tenants">Back to tenants</router-link>
     </div>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
     <form class="glass card form" data-confirm="Create this organization?" @submit.prevent="createTenant">
       <label class="field"><span>Organization name</span><input v-model="form.name" required /></label>
       <label class="field"><span>Email</span><input v-model="form.email" type="email" /></label>

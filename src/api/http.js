@@ -2,6 +2,7 @@ import { correctionId, rememberCorrectionId } from "../utils/correctionId";
 
 const TOKEN_KEY = "shulehub.accessToken";
 const REFRESH_KEY = "shulehub.refreshToken";
+let tokenEpoch = 0;
 
 export function apiBase() {
   return import.meta.env.VITE_API_BASE || "";
@@ -21,6 +22,7 @@ export function setTokens({ accessToken, refreshToken }) {
 }
 
 export function clearTokens() {
+  tokenEpoch += 1;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
 }
@@ -48,6 +50,7 @@ let refreshing = null;
 async function refreshAccess() {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
+  const epoch = tokenEpoch;
   if (!refreshing) {
     refreshing = request("/api/v1/auth/refresh", {
       method: "POST",
@@ -56,11 +59,12 @@ async function refreshAccess() {
       skipRefresh: true,
     })
       .then((data) => {
+        if (epoch !== tokenEpoch) return null;
         setTokens(data);
         return data.accessToken;
       })
       .catch(() => {
-        clearTokens();
+        if (epoch === tokenEpoch) clearTokens();
         return null;
       })
       .finally(() => {
@@ -68,6 +72,10 @@ async function refreshAccess() {
       });
   }
   return refreshing;
+}
+
+export function tryRefreshSession() {
+  return refreshAccess();
 }
 
 export async function request(path, options = {}) {
@@ -110,6 +118,61 @@ export async function request(path, options = {}) {
     throw error;
   }
   return data;
+}
+
+async function fetchFileBlob(path) {
+  const headers = {
+    Accept: "*/*",
+    "X-Correction-Id": correctionId(),
+  };
+  const token = getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  let response = await fetch(`${apiBase()}${path}`, { headers });
+  rememberCorrectionId(response.headers.get("X-Correction-Id"));
+  if (response.status === 401) {
+    const next = await refreshAccess();
+    if (next) {
+      headers.Authorization = `Bearer ${next}`;
+      response = await fetch(`${apiBase()}${path}`, { headers });
+      rememberCorrectionId(response.headers.get("X-Correction-Id"));
+    }
+  }
+  if (!response.ok) {
+    const data = await parseBody(response);
+    const error = new Error(apiError(data, `HTTP ${response.status}`));
+    error.status = response.status;
+    error.body = data;
+    throw error;
+  }
+  return response.blob();
+}
+
+function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadFile(path, filename) {
+  saveBlob(await fetchFileBlob(path), filename);
+}
+
+export async function viewFile(path, filename) {
+  const blob = await fetchFileBlob(path);
+  const url = URL.createObjectURL(blob);
+  const opened = window.open(url, "_blank", "noopener");
+  if (!opened) {
+    saveBlob(blob, filename);
+    URL.revokeObjectURL(url);
+    return;
+  }
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export const api = {

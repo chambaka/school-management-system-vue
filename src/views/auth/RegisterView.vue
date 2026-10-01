@@ -6,10 +6,12 @@ import Icon from "../../components/Icon.vue";
 import PasswordStrengthInput from "../../components/PasswordStrengthInput.vue";
 import PhoneInput from "../../components/PhoneInput.vue";
 import { useAuthStore, homeFor } from "../../stores/auth";
+import { useFeedback } from "../../composables/useFeedback";
+
 
 const auth = useAuthStore();
 const router = useRouter();
-const error = ref("");
+const { error } = useFeedback();
 const loading = ref(false);
 const passwordOk = ref(false);
 const showConfirm = ref(false);
@@ -65,8 +67,7 @@ async function submit() {
 <template>
   <GuestShell>
     <h2 class="serif">Register organization</h2>
-    <p class="sub">Creates the organization and your tenant admin. Add schools from the organization dashboard.</p>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
+    <p class="sub">Creates the organization and your tenant admin. A platform admin can add schools afterward.</p>
     <form data-confirm="Create this organization?" @submit.prevent="submit">
       <label class="field">
         <span>Organization / tenant</span>

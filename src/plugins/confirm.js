@@ -50,6 +50,7 @@ export function installConfirm(app) {
       const form = event.target;
       if (!(form instanceof HTMLFormElement)) return;
       if (form.hasAttribute("data-no-confirm")) return;
+      if (event.submitter?.type === "button") return;
       if (form.dataset.confirmOk === "1") {
         delete form.dataset.confirmOk;
         return;

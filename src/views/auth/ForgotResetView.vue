@@ -4,16 +4,20 @@ import { useRouter } from "vue-router";
 import GuestShell from "../../layouts/GuestShell.vue";
 import PasswordStrengthInput from "../../components/PasswordStrengthInput.vue";
 import { authApi } from "../../api/endpoints";
+import { useFeedback } from "../../composables/useFeedback";
+
 
 const router = useRouter();
 const password = ref("");
 const passwordOk = ref(false);
-const error = ref("");
+const { error } = useFeedback();
 const loading = ref(false);
 const email = ref("");
 
 onMounted(() => {
-  email.value = sessionStorage.getItem("shulehub.resetEmail") || "";
+  email.value = sessionStorage.getItem("shulehub.resetIdentifier")
+    || sessionStorage.getItem("shulehub.resetEmail")
+    || "";
   if (!sessionStorage.getItem("shulehub.resetToken")) router.replace("/forgot");
 });
 
@@ -44,7 +48,6 @@ async function submit() {
   <GuestShell>
     <h2 class="serif">Choose a new password</h2>
     <p class="sub">This signs you out of other devices.</p>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
     <form data-no-confirm @submit.prevent="submit">
       <PasswordStrengthInput v-model="password" :email="email" @valid-change="passwordOk = $event" />
       <button class="btn" :disabled="loading || !passwordOk">{{ loading ? "Updating…" : "Update password & sign in" }}</button>

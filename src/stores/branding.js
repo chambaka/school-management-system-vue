@@ -36,8 +36,12 @@ export function isLoopbackHost(host) {
 export const useBrandingStore = defineStore("branding", {
   state: () => ({
     current: null,
+    organizationName: "",
   }),
   actions: {
+    setOrganizationName(name) {
+      this.organizationName = name || "";
+    },
     applySchool(school) {
       if (!school) {
         this.current = null;

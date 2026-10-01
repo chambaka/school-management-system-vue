@@ -3,18 +3,26 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { tenantApi } from "../../api/endpoints";
 import Icon from "../../components/Icon.vue";
+import ListSearch from "../../components/ListSearch.vue";
+import { useListSearch } from "../../utils/listSearch";
 import { useConfigStore } from "../../stores/config";
 import { officersPath } from "../../utils/openSchool";
 import { statusLabel } from "../../utils/status";
 import { useAuthStore } from "../../stores/auth";
+import { useFeedback } from "../../composables/useFeedback";
+
 
 const auth = useAuthStore();
 
 const router = useRouter();
 const config = useConfigStore();
 const tenants = ref([]);
+const { query, filteredRows } = useListSearch(tenants, (t) => [
+  t.name, t.slug, statusLabel(t.status), schoolCountLabel(t.schoolCount),
+  (schoolsByTenant.value[t.id] || []).map((s) => [s.name, s.slug]),
+]);
 const schoolsByTenant = ref({});
-const error = ref("");
+const { error } = useFeedback();
 
 function schoolCountLabel(count) {
   if (!count) return "No schools yet";
@@ -73,16 +81,19 @@ async function deleteOrganization(tenant) {
         <h1>Tenants</h1>
         <p class="sub">Platform organizations. Each tenant can own one or more schools.</p>
       </div>
-      <router-link class="btn" to="/platform/tenants/new">Create tenant</router-link>
+      <div class="row-actions">
+        <ListSearch v-model="query" placeholder="Search organizations" />
+        <router-link class="btn" to="/platform/tenants/new">Create tenant</router-link>
+      </div>
     </div>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
-    <p v-if="!error && !tenants.length" class="banner">No tenants yet. Create the first organization.</p>
+    <p v-if="!error && !filteredRows.length" class="banner">{{ query.trim() ? "No organizations match that search." : "No tenants yet. Create the first organization." }}</p>
     <div class="grid">
-      <article v-for="t in tenants" :key="t.id" class="glass card tenant">
+      <article v-for="t in filteredRows" :key="t.id" class="glass card tenant">
         <header class="tenant-head">
           <div class="title">
             <p class="org-label">Organization</p>
             <h3>{{ t.name }}</h3>
+            <p v-if="t.slug" class="slug">Slug · {{ t.slug }}</p>
             <p class="count">{{ schoolCountLabel(t.schoolCount) }}</p>
           </div>
           <span class="chip">{{ statusLabel(t.status) }}</span>
@@ -92,7 +103,10 @@ async function deleteOrganization(tenant) {
           <li v-for="s in (schoolsByTenant[t.id] || [])" :key="s.id">
             <span class="school-name">
               <Icon name="school" />
-              {{ s.name }}
+              <span class="school-title">
+                {{ s.name }}
+                <span v-if="s.slug" class="slug">Slug · {{ s.slug }}</span>
+              </span>
             </span>
             <span class="school-actions">
               <span class="chip tiny">{{ statusLabel(s.status) }}</span>
@@ -107,14 +121,17 @@ async function deleteOrganization(tenant) {
         </ul>
         <div class="row-actions">
           <router-link v-if="t.status === 'ACTIVE'" class="btn" :to="`/platform/tenants/${t.id}/schools/new`">Add school</router-link>
+          <router-link class="btn btn-ghost" :to="`/platform/tenants/${t.id}/admins/new`">Add organization admin</router-link>
           <button class="btn btn-teal" type="button" v-confirm="`Activate ${t.name}?`" @click="setStatus(t, 'ACTIVE')">Activate</button>
           <button class="btn btn-ghost" type="button" v-confirm="`Suspend ${t.name}?`" @click="setStatus(t, 'SUSPENDED')">Suspend</button>
           <button
-            class="btn btn-danger"
+            class="icon-btn"
             type="button"
+            :aria-label="`Delete ${t.name}`"
+            title="Delete"
             v-confirm="{ message: `Delete ${t.name}? The organization, its schools, and all of their users will be archived and removed from live. Data is kept.`, danger: true }"
             @click="deleteOrganization(t)"
-          >Delete</button>
+          ><Icon name="trash" /></button>
         </div>
       </article>
     </div>
@@ -145,6 +162,20 @@ async function deleteOrganization(tenant) {
   margin: 0;
   font-size: 1.35rem;
   letter-spacing: -0.02em;
+}
+.slug {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.school-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.school-title .slug {
+  font-weight: 600;
 }
 .count {
   margin: 0.4rem 0 0;

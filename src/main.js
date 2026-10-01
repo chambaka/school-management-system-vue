@@ -5,6 +5,7 @@ import App from "./App.vue";
 import router from "./router";
 import { useAuthStore } from "./stores/auth";
 import { useConfigStore } from "./stores/config";
+import { useNoticeStore } from "./stores/notice";
 import { installConfirm } from "./plugins/confirm";
 import "./assets/styles.css";
 
@@ -18,5 +19,9 @@ await useConfigStore().bootstrap();
 
 app.use(router);
 installConfirm(app);
+app.config.errorHandler = (err) => {
+  console.error(err);
+  useNoticeStore().error(err?.message || "Something went wrong");
+};
 registerSW({ immediate: true });
 app.mount("#app");

@@ -1,9 +1,16 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { auditApi } from "../../api/endpoints";
+import ListSearch from "../../components/ListSearch.vue";
+import { useListSearch } from "../../utils/listSearch";
+import { useFeedback } from "../../composables/useFeedback";
+
 
 const rows = ref([]);
-const error = ref("");
+const { query, filteredRows } = useListSearch(rows, (r) => [
+  r.actorEmail, r.action, r.summary, r.details, r.correctionId, r.scope,
+]);
+const { error } = useFeedback();
 const action = ref("");
 
 const actions = [
@@ -32,8 +39,10 @@ onMounted(load);
 
 <template>
   <section class="page">
-    <div class="page-head"><div><h1>Platform audit</h1><p class="sub">Across all schools, including finance</p></div></div>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
+    <div class="page-head">
+      <div><h1>Platform audit</h1><p class="sub">Across all schools, including finance</p></div>
+      <ListSearch v-model="query" placeholder="Search audit log" />
+    </div>
     <label class="field">
       <span>Action</span>
       <select v-model="action" @change="load">
@@ -43,12 +52,12 @@ onMounted(load);
     </label>
     <div class="glass card table-wrap">
       <table>
-        <thead><tr><th>When</th><th>Scope</th><th>Corr</th><th>Actor</th><th>Action</th><th>Summary</th></tr></thead>
+        <thead><tr><th>When</th><th>Scope</th><th class="corr">Correction ID</th><th>Actor</th><th>Action</th><th>Summary</th></tr></thead>
         <tbody>
-          <tr v-for="r in rows" :key="r.id">
+          <tr v-for="r in filteredRows" :key="r.id">
             <td>{{ r.createdAt }}</td>
             <td>{{ r.scope }}</td>
-            <td>{{ r.correctionId }}</td>
+            <td class="corr"><span class="corr-id">{{ r.correctionId || "—" }}</span></td>
             <td>{{ r.actorEmail }}</td>
             <td>{{ r.action }}</td>
             <td>

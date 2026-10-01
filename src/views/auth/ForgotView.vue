@@ -4,18 +4,20 @@ import { useRouter } from "vue-router";
 import GuestShell from "../../layouts/GuestShell.vue";
 import Icon from "../../components/Icon.vue";
 import { authApi } from "../../api/endpoints";
+import { useFeedback } from "../../composables/useFeedback";
+
 
 const router = useRouter();
-const email = ref("");
-const error = ref("");
+const identifier = ref("");
+const { error } = useFeedback();
 const loading = ref(false);
 
 async function submit() {
   error.value = "";
   loading.value = true;
   try {
-    const res = await authApi.forgot({ email: email.value });
-    sessionStorage.setItem("shulehub.resetEmail", email.value);
+    const res = await authApi.forgot({ identifier: identifier.value });
+    sessionStorage.setItem("shulehub.resetIdentifier", identifier.value);
     sessionStorage.setItem("shulehub.resetMeta", JSON.stringify(res));
     router.push("/forgot/code");
   } catch (e) {
@@ -29,17 +31,16 @@ async function submit() {
 <template>
   <GuestShell>
     <h2 class="serif">Forgot password</h2>
-    <p class="sub">If that account exists, we send a 6-digit code. It expires in 30 minutes.</p>
-    <p v-if="error" class="banner banner-error">{{ error }}</p>
+    <p class="sub">If that account exists, we text a 6-digit code to the phone on the account. It expires in 30 minutes.</p>
     <form data-no-confirm @submit.prevent="submit">
       <label class="field">
-        <span>Email</span>
+        <span>Email, phone, or username</span>
         <div class="control">
           <Icon class="lead" name="mail" />
-          <input v-model="email" type="email" required placeholder="yuki.t@example.com" />
+          <input v-model="identifier" type="text" required autocomplete="username" autofocus placeholder="0753493500 or you@school.ac.tz" />
         </div>
       </label>
-      <button class="btn" :disabled="loading">{{ loading ? "Sending…" : "Send reset code" }}</button>
+      <button class="btn" :disabled="loading">{{ loading ? "Sending…" : "Send SMS code" }}</button>
     </form>
     <p class="auth-back"><router-link to="/login">← Back to sign in</router-link></p>
   </GuestShell>
