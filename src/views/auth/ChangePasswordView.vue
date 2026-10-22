@@ -1,12 +1,15 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import PasswordStrengthInput from "../../components/PasswordStrengthInput.vue";
 import { authApi, notificationSettingsApi } from "../../api/endpoints";
-import { useAuthStore } from "../../stores/auth";
+import { homeFor, useAuthStore } from "../../stores/auth";
 import { useFeedback } from "../../composables/useFeedback";
 
 
 const auth = useAuthStore();
+const router = useRouter();
+const mustChange = computed(() => Boolean(auth.user?.passwordChangeRequired));
 const canResetOwnTwoFactor = computed(() => ["HEADMASTER", "SCHOOL_ADMIN", "ACADEMIC_MASTER", "ORGANIZATION_ADMIN", "SUPER_ADMIN"].includes(auth.role));
 const currentPassword = ref("");
 const newPassword = ref("");
@@ -58,9 +61,12 @@ async function submit() {
   loading.value = true;
   try {
     await authApi.changePassword({ currentPassword: currentPassword.value, newPassword: newPassword.value });
+    const forced = mustChange.value;
+    if (auth.user) auth.persist({ ...auth.user, passwordChangeRequired: false });
     ok.value = "Password updated. Other sessions were signed out.";
     currentPassword.value = "";
     newPassword.value = "";
+    if (forced) router.push(homeFor(auth.role));
   } catch (e) {
     error.value = e.message;
   } finally {
@@ -88,8 +94,8 @@ async function resetOwnTwoFactor() {
   <section class="page">
     <div class="page-head">
       <div>
-        <h1>Security</h1>
-        <p class="sub">Password and authenticator for {{ auth.user?.email }}</p>
+        <h1>{{ mustChange ? "Change your password" : "Security" }}</h1>
+        <p class="sub">{{ mustChange ? "The password from the SMS is temporary. Choose a new one before you continue." : `Password and authenticator for ${auth.user?.email || ""}` }}</p>
       </div>
     </div>
     <div class="glass card" style="max-width: 520px">

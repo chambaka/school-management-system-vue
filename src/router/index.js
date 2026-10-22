@@ -117,6 +117,7 @@ router.beforeEach(async (to) => {
   if (to.path === "/admins") {
     return auth.role === "SUPER_ADMIN" && !config.singleTenant ? "/platform/schools" : "/tenant/schools";
   }
+  if (auth.isAuthed && auth.user?.passwordChangeRequired && to.path !== "/security") return "/security";
   if (to.meta.guest && auth.isAuthed) return homeFor(auth.role);
   if (to.meta.auth && !auth.isAuthed) return { path: "/login", query: { next: to.fullPath } };
   if (to.meta.roles && !to.meta.roles.includes(auth.role)

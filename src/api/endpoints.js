@@ -36,6 +36,7 @@ export const brandingApi = {
 
 export const publicApi = {
   config: () => request("/api/v1/public/config", { skipAuth: true }),
+  licensePlans: () => request("/api/v1/public/license-plans", { skipAuth: true }),
 };
 
 export const schoolApi = {
@@ -50,6 +51,7 @@ export const tenantApi = {
   current: () => api.get("/api/v1/tenants/current"),
   rename: (body) => api.put("/api/v1/tenants/current", body),
   updateProfile: (body) => api.put("/api/v1/tenants/current/profile", body),
+  updateLicense: (body) => api.put("/api/v1/tenants/current/license", body),
   overview: () => api.get("/api/v1/tenants/current/overview"),
   audit: (params) => api.get(`/api/v1/tenants/current/audit${q(params)}`),
   schools: () => api.get("/api/v1/tenants/current/schools"),

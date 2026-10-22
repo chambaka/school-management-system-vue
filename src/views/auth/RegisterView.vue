@@ -4,9 +4,11 @@ import { useRouter } from "vue-router";
 import GuestShell from "../../layouts/GuestShell.vue";
 import Icon from "../../components/Icon.vue";
 import PasswordStrengthInput from "../../components/PasswordStrengthInput.vue";
+import LicensePicker from "../../components/LicensePicker.vue";
 import PhoneInput from "../../components/PhoneInput.vue";
 import { useAuthStore, homeFor } from "../../stores/auth";
 import { useFeedback } from "../../composables/useFeedback";
+import { emptyLicense } from "../../utils/license";
 
 
 const auth = useAuthStore();
@@ -25,6 +27,7 @@ const form = reactive({
   timezone: "Africa/Dar_es_Salaam",
   currency: "TZS",
   country: "Tanzania",
+  ...emptyLicense(),
 });
 
 const passwordsMatch = computed(
@@ -44,7 +47,10 @@ async function submit() {
   }
   loading.value = true;
   try {
-    const { tenantName, adminName, adminEmail, password, phone, timezone, currency, country } = form;
+    const {
+      tenantName, adminName, adminEmail, password, phone, timezone, currency, country,
+      billingModel, subscriptionPlan, billingCycle,
+    } = form;
     const user = await auth.register({
       tenantName,
       adminName,
@@ -54,6 +60,9 @@ async function submit() {
       timezone,
       currency,
       country,
+      billingModel,
+      subscriptionPlan,
+      billingCycle: billingCycle || null,
     });
     router.push(homeFor(user.role));
   } catch (e) {
@@ -119,6 +128,11 @@ async function submit() {
         <label class="field"><span>Timezone</span><input v-model="form.timezone" /></label>
         <label class="field"><span>Country</span><input v-model="form.country" /></label>
       </div>
+      <LicensePicker
+        v-model:billing-model="form.billingModel"
+        v-model:subscription-plan="form.subscriptionPlan"
+        v-model:billing-cycle="form.billingCycle"
+      />
       <button class="btn" :disabled="loading || !canSubmit">{{ loading ? "Creating…" : "Create organization" }}</button>
     </form>
     <p class="auth-back"><router-link to="/login">← Back to sign in</router-link></p>

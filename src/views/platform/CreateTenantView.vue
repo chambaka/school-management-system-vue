@@ -2,20 +2,25 @@
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { tenantApi } from "../../api/endpoints";
+import LicensePicker from "../../components/LicensePicker.vue";
 import PhoneInput from "../../components/PhoneInput.vue";
 import { useFeedback } from "../../composables/useFeedback";
+import { emptyLicense } from "../../utils/license";
 
 
 const router = useRouter();
 const { error } = useFeedback();
 const saving = ref(false);
-const form = reactive({ name: "", email: "", phone: "", country: "Tanzania" });
+const form = reactive({ name: "", email: "", phone: "", country: "Tanzania", ...emptyLicense() });
 
 async function createTenant() {
   error.value = "";
   saving.value = true;
   try {
-    await tenantApi.platformCreate(form);
+    await tenantApi.platformCreate({
+      ...form,
+      billingCycle: form.billingCycle || null,
+    });
     router.push("/platform/tenants");
   } catch (e) {
     error.value = e.message;
@@ -39,6 +44,11 @@ async function createTenant() {
       <label class="field"><span>Email</span><input v-model="form.email" type="email" /></label>
       <PhoneInput v-model="form.phone" />
       <label class="field"><span>Country</span><input v-model="form.country" /></label>
+      <LicensePicker
+        v-model:billing-model="form.billingModel"
+        v-model:subscription-plan="form.subscriptionPlan"
+        v-model:billing-cycle="form.billingCycle"
+      />
       <div class="row-actions">
         <button class="btn" :disabled="saving">{{ saving ? "Creating…" : "Create tenant" }}</button>
         <router-link class="btn btn-ghost" to="/platform/tenants">Cancel</router-link>
@@ -49,6 +59,6 @@ async function createTenant() {
 
 <style scoped>
 .form {
-  max-width: 36rem;
+  max-width: 52rem;
 }
 </style>

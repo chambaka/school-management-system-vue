@@ -1,7 +1,9 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import { tenantApi } from "../../api/endpoints";
+import { publicApi, tenantApi } from "../../api/endpoints";
+import LicensePicker from "../../components/LicensePicker.vue";
+import { licenseFromTenant, licenseSummary } from "../../utils/license";
 import Icon from "../../components/Icon.vue";
 import ListSearch from "../../components/ListSearch.vue";
 import { useListSearch } from "../../utils/listSearch";
@@ -17,11 +19,16 @@ const auth = useAuthStore();
 const router = useRouter();
 const config = useConfigStore();
 const tenants = ref([]);
+const catalog = ref({ models: [] });
 const { query, filteredRows } = useListSearch(tenants, (t) => [
   t.name, t.slug, statusLabel(t.status), schoolCountLabel(t.schoolCount),
+  licenseSummary(t, catalog.value),
   (schoolsByTenant.value[t.id] || []).map((s) => [s.name, s.slug]),
 ]);
 const schoolsByTenant = ref({});
+const switchingId = ref(null);
+const savingLicense = ref(false);
+const license = reactive(licenseFromTenant(null));
 const { error } = useFeedback();
 
 function schoolCountLabel(count) {
@@ -31,6 +38,7 @@ function schoolCountLabel(count) {
 }
 
 async function load() {
+  catalog.value = await publicApi.licensePlans().catch(() => ({ models: [] }));
   tenants.value = await tenantApi.platformList();
   const map = {};
   await Promise.all(tenants.value.map(async (t) => {
@@ -61,6 +69,34 @@ async function setStatus(tenant, status) {
     await load();
   } catch (e) {
     error.value = e.message;
+  }
+}
+
+function startLicenseSwitch(tenant) {
+  error.value = "";
+  Object.assign(license, licenseFromTenant(tenant));
+  switchingId.value = tenant.id;
+}
+
+function cancelLicenseSwitch() {
+  switchingId.value = null;
+}
+
+async function saveLicense(tenant) {
+  error.value = "";
+  savingLicense.value = true;
+  try {
+    const updated = await tenantApi.platformUpdate(tenant.id, {
+      billingModel: license.billingModel,
+      subscriptionPlan: license.subscriptionPlan,
+      billingCycle: license.billingCycle || null,
+    });
+    tenants.value = tenants.value.map((row) => (row.id === updated.id ? { ...row, ...updated } : row));
+    switchingId.value = null;
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    savingLicense.value = false;
   }
 }
 
@@ -95,6 +131,7 @@ async function deleteOrganization(tenant) {
             <h3>{{ t.name }}</h3>
             <p v-if="t.slug" class="slug">Slug · {{ t.slug }}</p>
             <p class="count">{{ schoolCountLabel(t.schoolCount) }}</p>
+            <p class="count">{{ licenseSummary(t, catalog) }}</p>
           </div>
           <span class="chip">{{ statusLabel(t.status) }}</span>
         </header>
@@ -119,7 +156,30 @@ async function deleteOrganization(tenant) {
           </li>
           <li v-if="!(schoolsByTenant[t.id] || []).length" class="empty">No schools have been added yet</li>
         </ul>
+        <form
+          v-if="switchingId === t.id"
+          class="license-form"
+          data-confirm="Switch this organization's license?"
+          @submit.prevent="saveLicense(t)"
+        >
+          <LicensePicker
+            v-model:billing-model="license.billingModel"
+            v-model:subscription-plan="license.subscriptionPlan"
+            v-model:billing-cycle="license.billingCycle"
+            hint="Switch between subscription and a one-time purchase. Schools keep running."
+          />
+          <div class="row-actions">
+            <button class="btn" :disabled="savingLicense">{{ savingLicense ? "Switching…" : "Save license" }}</button>
+            <button class="btn btn-ghost" type="button" :disabled="savingLicense" @click="cancelLicenseSwitch">Cancel</button>
+          </div>
+        </form>
         <div class="row-actions">
+          <button
+            v-if="switchingId !== t.id"
+            class="btn btn-ghost"
+            type="button"
+            @click="startLicenseSwitch(t)"
+          >Switch license</button>
           <router-link v-if="t.status === 'ACTIVE'" class="btn" :to="`/platform/tenants/${t.id}/schools/new`">Add school</router-link>
           <router-link class="btn btn-ghost" :to="`/platform/tenants/${t.id}/admins/new`">Add organization admin</router-link>
           <button class="btn btn-teal" type="button" v-confirm="`Activate ${t.name}?`" @click="setStatus(t, 'ACTIVE')">Activate</button>
@@ -226,5 +286,9 @@ async function deleteOrganization(tenant) {
 .btn-tiny {
   padding: 0.28rem 0.7rem;
   font-size: 0.75rem;
+}
+.license-form {
+  display: grid;
+  gap: 0.75rem;
 }
 </style>

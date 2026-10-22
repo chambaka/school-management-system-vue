@@ -2,8 +2,10 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import ListSearch from "../../components/ListSearch.vue";
 import PhoneInput from "../../components/PhoneInput.vue";
-import { tenantApi } from "../../api/endpoints";
+import { publicApi, tenantApi } from "../../api/endpoints";
+import LicensePicker from "../../components/LicensePicker.vue";
 import { useListSearch } from "../../utils/listSearch";
+import { emptyLicense, licenseFromTenant, licenseSummary } from "../../utils/license";
 import { officersPath } from "../../utils/openSchool";
 import { statusLabel } from "../../utils/status";
 import { useAuthStore } from "../../stores/auth";
@@ -19,7 +21,9 @@ const tenant = ref(null);
 const schools = ref([]);
 const overview = ref({});
 const editingProfile = ref(false);
+const editingLicense = ref(false);
 const savingProfile = ref(false);
+const savingLicense = ref(false);
 const savingStatusId = ref(null);
 const profile = reactive({
   email: "",
@@ -28,7 +32,9 @@ const profile = reactive({
   timezone: "Africa/Dar_es_Salaam",
   currency: "TZS",
   termsPerYear: 4,
+  ...emptyLicense(),
 });
+const catalog = ref({ models: [] });
 const { query, filteredRows } = useListSearch(schools, (s) => [s.name, s.slug, tenant.value?.slug, statusLabel(s.status)]);
 const { error } = useFeedback();
 const renaming = ref(false);
@@ -48,6 +54,7 @@ function fillProfile(row) {
   profile.timezone = row?.timezone || "Africa/Dar_es_Salaam";
   profile.currency = row?.currency || "TZS";
   profile.termsPerYear = row?.termsPerYear || 4;
+  Object.assign(profile, licenseFromTenant(row));
 }
 
 function schoolStats(school) {
@@ -60,6 +67,7 @@ function money(amount) {
 }
 
 async function load() {
+  catalog.value = await publicApi.licensePlans().catch(() => ({ models: [] }));
   tenant.value = await tenantApi.current();
   branding.setOrganizationName(tenant.value?.name || "");
   fillProfile(tenant.value);
@@ -111,6 +119,9 @@ async function saveProfile() {
       timezone: profile.timezone,
       currency: profile.currency,
       termsPerYear: Number(profile.termsPerYear),
+      billingModel: profile.billingModel,
+      subscriptionPlan: profile.subscriptionPlan,
+      billingCycle: profile.billingCycle || null,
     });
     fillProfile(tenant.value);
     editingProfile.value = false;
@@ -124,6 +135,43 @@ async function saveProfile() {
 function cancelProfile() {
   fillProfile(tenant.value);
   editingProfile.value = false;
+}
+
+function toggleProfile() {
+  error.value = "";
+  fillProfile(tenant.value);
+  editingLicense.value = false;
+  editingProfile.value = !editingProfile.value;
+}
+
+function startLicenseSwitch() {
+  error.value = "";
+  fillProfile(tenant.value);
+  editingProfile.value = false;
+  editingLicense.value = true;
+}
+
+function cancelLicenseSwitch() {
+  fillProfile(tenant.value);
+  editingLicense.value = false;
+}
+
+async function saveLicense() {
+  error.value = "";
+  savingLicense.value = true;
+  try {
+    tenant.value = await tenantApi.updateLicense({
+      billingModel: profile.billingModel,
+      subscriptionPlan: profile.subscriptionPlan,
+      billingCycle: profile.billingCycle || null,
+    });
+    fillProfile(tenant.value);
+    editingLicense.value = false;
+  } catch (e) {
+    error.value = e.message;
+  } finally {
+    savingLicense.value = false;
+  }
 }
 
 async function setSchoolStatus(school, status) {
@@ -185,13 +233,17 @@ async function saveSchoolName(school) {
           <p class="sub">
             {{ schools.length === 1 ? "1 school in this organization" : `${schools.length} schools in this organization` }}
           </p>
+          <p v-if="tenant" class="sub">{{ licenseSummary(tenant, catalog) }}</p>
         </template>
       </div>
       <div v-if="!editingName && tenant" class="row-actions">
         <ListSearch v-model="query" placeholder="Search schools" />
         <router-link v-if="canAddSchool && tenant.status === 'ACTIVE'" class="btn" to="/tenant/schools/new">Add school</router-link>
         <router-link v-if="canCreateOrganizationAdmin" class="btn btn-ghost" to="/tenant/admins/new">Add organization admin</router-link>
-        <button v-if="canRenameOrganization" class="btn btn-ghost" type="button" @click="editingProfile = !editingProfile">
+        <button v-if="canRenameOrganization" class="btn btn-ghost" type="button" @click="editingLicense ? cancelLicenseSwitch() : startLicenseSwitch()">
+          {{ editingLicense ? "Close license" : "Switch license" }}
+        </button>
+        <button v-if="canRenameOrganization" class="btn btn-ghost" type="button" @click="toggleProfile">
           {{ editingProfile ? "Close profile" : "Organization profile" }}
         </button>
         <button v-if="canRenameOrganization" class="btn btn-ghost" type="button" @click="editingName = true">
@@ -217,6 +269,25 @@ async function saveSchoolName(school) {
       <div class="row-actions">
         <button class="btn" :disabled="savingProfile">{{ savingProfile ? "Saving…" : "Save profile" }}</button>
         <button class="btn btn-ghost" type="button" :disabled="savingProfile" @click="cancelProfile">Cancel</button>
+      </div>
+    </form>
+    <form
+      v-if="editingLicense && tenant"
+      class="glass card profile"
+      data-confirm="Switch this organization's license?"
+      @submit.prevent="saveLicense"
+    >
+      <h3>Switch license</h3>
+      <p class="sub">Move between recurring subscription and a one-time purchase. Schools keep running.</p>
+      <LicensePicker
+        v-model:billing-model="profile.billingModel"
+        v-model:subscription-plan="profile.subscriptionPlan"
+        v-model:billing-cycle="profile.billingCycle"
+        hint="Pick the other model, then a package. You can switch again whenever you need to."
+      />
+      <div class="row-actions">
+        <button class="btn" :disabled="savingLicense">{{ savingLicense ? "Switching…" : "Save license" }}</button>
+        <button class="btn btn-ghost" type="button" :disabled="savingLicense" @click="cancelLicenseSwitch">Cancel</button>
       </div>
     </form>
     <p v-if="!filteredRows.length" class="banner">
