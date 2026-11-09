@@ -8,6 +8,7 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: false,
       includeAssets: ["pwa-192.png", "pwa-512.png", "apple-touch-icon.png", "shulehub-mark.svg"],
       manifest: {
         id: "/",
@@ -32,7 +33,7 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: "/index.html",
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
+        globPatterns: ["**/*.{js,css,html,png,svg,jpg,jpeg,ico,woff2}"],
       },
     }),
   ],

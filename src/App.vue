@@ -3,6 +3,7 @@ import { onMounted } from "vue";
 import ConfirmDialog from "./components/ConfirmDialog.vue";
 import IdleSessionGuard from "./components/IdleSessionGuard.vue";
 import NoticeDialog from "./components/NoticeDialog.vue";
+import PwaInstallBanner from "./components/PwaInstallBanner.vue";
 import { useBrandingStore } from "./stores/branding";
 
 const branding = useBrandingStore();
@@ -14,4 +15,5 @@ onMounted(() => branding.bootstrap());
   <IdleSessionGuard />
   <ConfirmDialog />
   <NoticeDialog />
+  <PwaInstallBanner />
 </template>
