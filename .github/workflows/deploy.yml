@@ -21,7 +21,7 @@ jobs:
     steps:
 
       # =====================================================
-      # CHECKOUT
+      # CHECKOUTT
       # =====================================================
       - name: Checkout Code
         uses: actions/checkout@v4
