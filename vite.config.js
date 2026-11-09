@@ -8,7 +8,7 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["pwa-192.png", "pwa-512.png", "apple-touch-icon.png", "sms-logo.png"],
+      includeAssets: ["pwa-192.png", "pwa-512.png", "apple-touch-icon.png", "shulehub-mark.svg"],
       manifest: {
         id: "/",
         name: "ShuleHub School Management System",
@@ -16,8 +16,8 @@ export default defineConfig({
         description: "Academics, people, and campus operations in one place.",
         lang: "en",
         dir: "ltr",
-        theme_color: "#06101F",
-        background_color: "#06101F",
+        theme_color: "#050A12",
+        background_color: "#050A12",
         display: "standalone",
         display_override: ["standalone", "minimal-ui"],
         orientation: "portrait-primary",

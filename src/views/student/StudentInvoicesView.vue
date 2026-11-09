@@ -309,7 +309,7 @@ function toggle(id) {
   align-items: center;
   gap: 0.4rem;
 }
-.line-label .ico { color: #f5c451; }
+.line-label .ico { color: var(--primary); }
 .pay-mark {
   display: inline-flex;
   align-items: center;
@@ -320,7 +320,7 @@ function toggle(id) {
   flex: 0 0 auto;
 }
 .pay-paid { color: #17310f; background: #b6e7a3; }
-.pay-partial { color: #4a3208; background: #f5c451; }
+.pay-partial { color: #4a3208; background: var(--primary); }
 .pay-unpaid { color: #f3c1c1; background: transparent; box-shadow: inset 0 0 0 1.5px #c45c5c; }
 .items-row td {
   background: rgba(255, 255, 255, 0.02);

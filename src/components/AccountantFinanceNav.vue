@@ -56,7 +56,7 @@ function groupActive(group) {
 .group-label.current { color: var(--primary); }
 .leaf {
   position: relative;
-  color: #f5c451;
+  color: var(--primary);
   padding: 0.48rem 0.7rem 0.48rem 1.15rem;
   border-radius: 12px;
   border: 0;
@@ -81,7 +81,7 @@ function groupActive(group) {
   height: 0.35rem;
   border-radius: 50%;
   transform: translateY(-50%);
-  background: #f5c451;
+  background: var(--primary);
   box-shadow: 0 1px 0 #fff6d2;
 }
 .leaf.top {

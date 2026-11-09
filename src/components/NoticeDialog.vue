@@ -77,7 +77,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   font-weight: 800;
 }
 .is-error .kicker { color: #ff8b98; }
-.is-warning .kicker { color: #f5c451; }
+.is-warning .kicker { color: var(--primary); }
 .is-success .kicker { color: var(--secondary); }
 h2 {
   margin: 0 0 0.55rem;

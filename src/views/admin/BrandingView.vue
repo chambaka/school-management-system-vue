@@ -9,8 +9,8 @@ import { useFeedback } from "../../composables/useFeedback";
 const branding = useBrandingStore();
 const { error, ok } = useFeedback();
 const form = reactive({
-  name: "", email: "", phone: "", primaryColor: "#F5C451", secondaryColor: "#2EE6C8",
-  accentColor: "#FF4D8D", timezone: "Africa/Dar_es_Salaam", currency: "TZS", locale: "en",
+  name: "", email: "", phone: "", primaryColor: "#FDB813", secondaryColor: "#3D8FAD",
+  accentColor: "#E8A04A", timezone: "Africa/Dar_es_Salaam", currency: "TZS", locale: "en",
   country: "Tanzania", logoUrl: "", customDomain: "",
 });
 

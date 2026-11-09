@@ -124,10 +124,10 @@ async function copySecret() {
     <template v-if="!challenge">
       <h2 class="serif">Sign in</h2>
       <p v-if="idleNotice" class="session-idle">You were signed out due to inactivity. Sign in again to continue.</p>
-      <p class="sub">Email, phone, or username. Five failed attempts lock the account for 15 minutes.</p>
+      <p class="sub">Use your school email. Forgot? We send a 6-digit code.</p>
       <form data-no-confirm @submit.prevent="submit">
         <label class="field">
-          <span>Email, phone, or username</span>
+          <span class="sr-only">Email, phone, or username</span>
           <div class="control">
             <Icon class="lead" name="mail" />
             <input v-model="form.identifier" type="text" required autocomplete="username" placeholder="you@school.ac.tz" />
@@ -212,7 +212,9 @@ async function copySecret() {
 </template>
 
 <style scoped>
-h2 { margin: 0 0 0.15rem; font-size: 2rem; }
+h2 { margin: 0 0 0.2rem; font-size: clamp(1.7rem, 4vw, 2rem); color: var(--text); }
+.sub { margin-top: 0.45rem; margin-bottom: 1.05rem; }
+.field-head span { color: var(--text); }
 .session-idle {
   margin: 0.55rem 0 0.2rem;
   padding: 0.65rem 0.8rem;
@@ -230,18 +232,17 @@ h2 { margin: 0 0 0.15rem; font-size: 2rem; }
   display: inline-flex;
   align-items: center;
   color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 16%, transparent);
-  border: 1px solid color-mix(in srgb, var(--primary) 42%, transparent);
+  background: transparent;
+  border: 1.5px solid color-mix(in srgb, var(--primary) 72%, white);
   border-radius: 999px;
-  padding: 0.28rem 0.7rem;
-  font-size: 0.78rem;
+  padding: 0.3rem 0.78rem;
+  font-size: 0.74rem;
   font-weight: 800;
-  letter-spacing: 0.02em;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 22%, transparent);
+  letter-spacing: 0.01em;
+  box-shadow: none;
 }
 .forgot:hover {
-  color: #1a1203;
-  background: linear-gradient(135deg, #ffe08a, var(--primary));
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
 }
 .code-page { min-width: 0; max-width: 100%; }
 .code-page h2 { margin: 0; font-size: 1.35rem; }

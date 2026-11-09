@@ -231,7 +231,7 @@ onMounted(async () => {
 .thread { display: flex; flex-direction: column; gap: 0.75rem; }
 .bubble { padding: 0.75rem 1rem; border-radius: 12px; background: rgba(255,255,255,0.04); }
 .bubble header { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; margin-bottom: 0.35rem; }
-.from-parent { border-left: 3px solid var(--gold, #F5C451); }
+.from-parent { border-left: 3px solid var(--primary); }
 .from-staff { border-left: 3px solid var(--teal, #2aa8a1); }
 .add-btn { align-self: flex-start; margin-top: 0.35rem; }
 .check { display: flex; gap: 0.5rem; align-items: center; color: var(--muted); margin: 0.5rem 0 1rem; }

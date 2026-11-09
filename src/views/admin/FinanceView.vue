@@ -635,7 +635,7 @@ onMounted(async () => {
 .fee-type .ico,
 .line-label .ico,
 .fee-type-btn .ico {
-  color: #f5c451;
+  color: var(--primary);
 }
 .fee-type-field {
   grid-column: 1 / -1;
@@ -658,15 +658,15 @@ onMounted(async () => {
   cursor: pointer;
 }
 .fee-type-btn.on {
-  color: #f5c451;
-  border-color: #f5c451;
+  color: var(--primary);
+  border-color: var(--primary);
 }
 .fee-pick {
   display: flex;
   align-items: center;
   gap: 0.45rem;
 }
-.fee-pick .ico { color: #f5c451; }
+.fee-pick .ico { color: var(--primary); }
 .fee-pick select { flex: 1; }
 .invoice-list {
   list-style: none;
@@ -721,7 +721,7 @@ onMounted(async () => {
   border-radius: 999px;
 }
 .pay-paid { color: #17310f; background: #b6e7a3; }
-.pay-partial { color: #4a3208; background: #f5c451; }
+.pay-partial { color: #4a3208; background: var(--primary); }
 .pay-unpaid { color: #f3c1c1; background: transparent; box-shadow: inset 0 0 0 1.5px #c45c5c; }
 .sr {
   position: absolute;

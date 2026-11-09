@@ -12,9 +12,9 @@ function applyTheme(branding) {
 
 function applyDefaults() {
   applyTheme({
-    primaryColor: "#F5C451",
-    secondaryColor: "#2EE6C8",
-    accentColor: "#FF4D8D",
+    primaryColor: "#FDB813",
+    secondaryColor: "#3D8FAD",
+    accentColor: "#E8A04A",
   });
   document.title = "ShuleHub · School Management System";
 }

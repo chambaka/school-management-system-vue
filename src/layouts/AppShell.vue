@@ -217,7 +217,7 @@ async function logout() {
     <aside class="side glass">
       <router-link :to="homeFor(auth.role)" class="logo">
         <img v-if="!isPlatformAdmin && branding.current?.logoUrl" :src="branding.current.logoUrl" alt="" />
-        <HaloCrest v-else :size="44" />
+        <HaloCrest v-else :size="48" />
         <div>
           <small v-if="organizationName">{{ organizationName }}</small>
           <strong>{{ schoolName }}</strong>
@@ -347,7 +347,7 @@ async function logout() {
   color: inherit;
   margin-bottom: 1.35rem;
 }
-.logo img { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; }
+.logo img { width: 42px; height: 42px; border-radius: 12px; object-fit: cover; flex-shrink: 0; }
 .logo small { display: block; color: var(--primary); letter-spacing: 0.16em; font-size: 0.62rem; font-weight: 800; }
 .logo strong { display: block; font-size: 0.92rem; }
 .logo .role {
@@ -381,7 +381,7 @@ async function logout() {
 .side nav { display: grid; gap: 0.15rem; overflow-y: auto; flex: 1; }
 .side nav a,
 .nav-parent {
-  color: #f5c451;
+  color: var(--primary);
   padding: 0.58rem 0.6rem;
   border-radius: 14px;
   border: 0;
@@ -394,7 +394,7 @@ async function logout() {
   letter-spacing: 0.045em;
   text-decoration: none;
   text-shadow:
-    0 1px 0 #fff6d2,
+    0 1px 0 #ffe9a8,
     0 2px 0 #a97812,
     0 4px 8px rgba(0, 0, 0, 0.45);
 }
@@ -435,8 +435,8 @@ async function logout() {
   border-radius: 9px;
   display: grid;
   place-items: center;
-  background: rgba(245, 196, 81, 0.1);
-  color: #f5c451;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
   box-shadow: none;
 }
 .side nav a.router-link-active,
@@ -466,14 +466,14 @@ async function logout() {
   border: 0;
   border-radius: 14px;
   background: none;
-  color: #f5c451;
+  color: var(--primary);
   font: inherit;
   font-weight: 800;
   letter-spacing: 0.045em;
   cursor: pointer;
   text-align: left;
   text-shadow:
-    0 1px 0 #fff6d2,
+    0 1px 0 #ffe9a8,
     0 2px 0 #a97812,
     0 4px 8px rgba(0, 0, 0, 0.45);
 }
@@ -483,8 +483,8 @@ async function logout() {
   border-radius: 9px;
   display: grid;
   place-items: center;
-  background: rgba(245, 196, 81, 0.1);
-  color: #f5c451;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
 }
 .sign-out:hover,
 .sign-out:focus-visible {
@@ -529,7 +529,7 @@ async function logout() {
 }
 .tabs a,
 .more-tab {
-  color: #f5c451;
+  color: var(--primary);
   text-align: center;
   font-size: 0.62rem;
   font-weight: 800;
@@ -548,7 +548,7 @@ async function logout() {
   background: none;
   box-shadow: none;
   text-shadow:
-    0 1px 0 #fff6d2,
+    0 1px 0 #ffe9a8,
     0 2px 0 #a97812;
 }
 .tabs a.router-link-active,
@@ -585,7 +585,7 @@ async function logout() {
 }
 .more-sheet nav { display: grid; gap: 0.15rem; }
 .more-sheet nav a {
-  color: #f5c451;
+  color: var(--primary);
   padding: 0.72rem 0.65rem;
   border-radius: 14px;
   border: 0;
@@ -599,7 +599,7 @@ async function logout() {
   background: none;
   box-shadow: none;
   text-shadow:
-    0 1px 0 #fff6d2,
+    0 1px 0 #ffe9a8,
     0 2px 0 #a97812,
     0 4px 8px rgba(0, 0, 0, 0.45);
 }
@@ -609,8 +609,8 @@ async function logout() {
   border-radius: 9px;
   display: grid;
   place-items: center;
-  background: rgba(245, 196, 81, 0.1);
-  color: #f5c451;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
 }
 .more-sheet nav a.router-link-active {
   color: #fff4c8;
